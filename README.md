@@ -67,7 +67,15 @@ Then open http://localhost:3000. The user is admin. To read the password, run th
 * docs/slack-alert-setup.md: steps to connect Slack (not done yet).
 * NOTES.md: a running list of what was done.
 
-Screenshots go in docs/screenshots.
+Screenshots are in docs/screenshots:
+
+* shop-page.png: a real browser screenshot of http://localhost:8082 (the shop front page loads).
+* pods.png: the output of kubectl get nodes and kubectl get pods, with the failing pods in red.
+* mysql-rabbitmq.png: mysql and rabbitmq Running with 0 restarts, the ulimit command, and the memory limits.
+* helm-release.png: the Helm release.
+* shipping-pull-error.png: the image pull errors for shipping.
+
+The four terminal images were made by running the real commands and drawing their output into an image. They are not photos of a terminal window. A screenshot of the GitHub repo page could not be taken, because the network was too slow.
 
 ## Notes on memory problems (mysql and rabbitmq)
 
