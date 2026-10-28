@@ -5,13 +5,18 @@ This is my fork of the Instana Robot Shop demo (https://github.com/instana/robot
 ## What is deployed
 
 * Robot Shop, installed with Helm from K8s/helm into the namespace robot-shop.
-* A load generator (K8s/load-deployment.yaml) that sends fake traffic to the shop.
-* Prometheus, Alertmanager and Grafana (kube-prometheus-stack) in the namespace monitoring.
-* Loki and Fluent Bit for logs, also in monitoring.
+* A load generator (K8s/load-deployment.yaml) that sends fake traffic to the shop. It is applied but has not started, because its image could not be pulled.
+* Planned but NOT deployed: Prometheus, Alertmanager and Grafana (kube-prometheus-stack) in the namespace monitoring, and Loki and Fluent Bit for logs. Only their values files exist, and they are untested.
 
 The Instana settings in the Helm values were emptied, because I do not use Instana here. The mysql memory limit was raised from 1024Mi to 2048Mi because mysql was killed for using too much memory while starting.
 
+## Current status in one line
+
+Robot Shop is partly running: 8 of 13 pods are Running (cart, catalogue, mongodb, mysql, rabbitmq, redis, user, web). dispatch, payment, ratings, shipping and the load generator are stuck in ImagePullBackOff because of slow image pulls. Monitoring and logging are not installed. See "What was and was not completed" below.
+
 ## How to install
+
+The install steps below are what to run. Only the Robot Shop part was actually run. The monitoring and logging commands were not run.
 
 You need Docker Desktop with Kubernetes on, plus kubectl and Helm.
 
@@ -86,10 +91,10 @@ These files were written without being installed. The chart docs could not be re
 This section is the honest status. It is updated as work finishes.
 
 * Step 1, deploy Robot Shop: NOT healthy yet. The Helm release is installed and the load generator is applied. cart, catalogue, mongodb, mysql, rabbitmq, redis, user and web are Running. dispatch, payment, ratings and shipping are still failing to pull images (ImagePullBackOff), and the load generator has not started for the same reason. The network on this machine is very slow and unreliable. So the shop does not work end to end. See NOTES.md for the evidence.
-* Step 2, metrics and dashboard: not finished yet. The alert rule and files are written but have not been applied.
-* Step 3, logs with Loki and Fluent Bit: not finished yet.
+* Step 2, metrics and dashboard: NOT DONE. Prometheus and Grafana were never installed, because the shop was not healthy at the 8:40pm cut off and the slow network could not pull more images. monitoring/prometheus-values.yaml and monitoring/robot-shop-alerts.yaml are written but not tested. There is no dashboard JSON (monitoring/robot-shop-dashboard.json does not exist).
+* Step 3, logs with Loki and Fluent Bit: NOT DONE. Nothing was installed. logging/loki-values.yaml and logging/fluent-bit-values.yaml are written but not tested, and the Loki data source is only defined inside monitoring/prometheus-values.yaml.
 * Step 4, tracing: not done.
-* Step 5, SLO document, alert rule and runbook: written. Slack delivery was not set up and not tested.
+* Step 5, SLO document, alert rule and runbook: the documents are written (docs/slo.md, docs/runbook.md, docs/postmortem-template.md, docs/slack-alert-setup.md). The alert rule file is written but was never applied, so Prometheus never loaded it. Slack delivery was not set up and not tested.
 * Step 6, incident drill: not done, because the instructor runs it.
 
 The instructor starter configs were not available to me, so I wrote my own minimal configs. They use single replicas, no persistence and short retention, because Docker Desktop has only about 7GB of memory.
