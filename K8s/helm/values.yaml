@@ -43,7 +43,7 @@ mongodb: {}
 mysql:
   resources:
     limits:
-      memory: 2048Mi
+      memory: 3072Mi
 
 payment:
   # Alternative payment gateway URL
@@ -51,7 +51,10 @@ payment:
   gateway: null
   #gateway: https://www.worldpay.com
 
-rabbitmq: {}
+rabbitmq:
+  resources:
+    limits:
+      memory: 1024Mi
 
 ratings: {}
 

@@ -64,11 +64,28 @@ Then open http://localhost:3000. The user is admin. To read the password, run th
 
 Screenshots go in docs/screenshots.
 
+## Notes on memory problems (mysql and rabbitmq)
+
+When first installed, mysql and rabbitmq were killed for running out of memory within seconds of starting. Raising the memory limit did not help, because each one simply grew until it hit the new limit (mysql was killed at about its 2Gi limit, then at about 3Gi; rabbitmq at about 512Mi, then about 1Gi). The Docker Desktop VM itself still had about 4.6GB free.
+
+Likely cause: the open file limit inside the containers is about 1 billion (`ulimit -n` showed 1073741816). MySQL 5.7 and RabbitMQ (Erlang) are known to size internal tables from that number. This is a likely cause, and it worked after the change below. I did not prove it in isolation.
+
+Workaround: the chart templates for mysql and rabbitmq now start the process with `ulimit -n 65536` first. After that, both pods stayed Running with 0 restarts for 10 minutes. The memory limits are kept at 3072Mi for mysql and 1024Mi for rabbitmq, set in K8s/helm/values.yaml.
+
+## Files that are written but not yet tested
+
+These files were written without being installed. The chart docs could not be reached when they were made, so they come from memory of the charts and may need small fixes. They stay in this list until each one has been installed and checked.
+
+* monitoring/prometheus-values.yaml: written but not yet tested.
+* logging/loki-values.yaml: written but not yet tested.
+* logging/fluent-bit-values.yaml: written but not yet tested.
+* monitoring/robot-shop-alerts.yaml: written but not yet tested (not applied to a cluster).
+
 ## What was and was not completed
 
 This section is the honest status. It is updated as work finishes.
 
-* Step 1, deploy Robot Shop: NOT healthy yet. The Helm release is installed and the load generator is applied. cart, catalogue, mongodb, user and web are Running. mysql and rabbitmq are killed for running out of memory (the container limit is hit), and dispatch, payment, ratings, redis and shipping are still pulling images, which is very slow on this machine. So the shop does not work end to end. See NOTES.md for the evidence.
+* Step 1, deploy Robot Shop: NOT healthy yet. The Helm release is installed and the load generator is applied. cart, catalogue, mongodb, mysql, rabbitmq, redis, user and web are Running. dispatch, payment, ratings and shipping are still failing to pull images (ImagePullBackOff), and the load generator has not started for the same reason. The network on this machine is very slow and unreliable. So the shop does not work end to end. See NOTES.md for the evidence.
 * Step 2, metrics and dashboard: not finished yet. The alert rule and files are written but have not been applied.
 * Step 3, logs with Loki and Fluent Bit: not finished yet.
 * Step 4, tracing: not done.

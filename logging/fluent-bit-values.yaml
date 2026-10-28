@@ -1,0 +1,25 @@
+# Fluent Bit (fluent/fluent-bit chart) reading pod logs and sending them to Loki.
+# Install: helm install fluent-bit fluent/fluent-bit -n monitoring -f logging/fluent-bit-values.yaml
+# WRITTEN BUT NOT YET TESTED. Written from memory of the chart, because the
+# chart docs could not be reached when this file was made.
+# The chart default inputs and the kubernetes filter are kept. Only the output is replaced.
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+config:
+  outputs: |
+    [OUTPUT]
+        Name        loki
+        Match       kube.*
+        Host        loki.monitoring.svc.cluster.local
+        Port        3100
+        # Labels: namespace, pod, container and app. Robot Shop pods are labelled
+        # "service" (for example service=web), so app is read from that label.
+        Labels      job=fluent-bit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name'], container=$kubernetes['container_name'], app=$kubernetes['labels']['service']
+        Line_Format key_value
+        Auto_Kubernetes_Labels off

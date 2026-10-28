@@ -1,0 +1,96 @@
+# Small values for prometheus-community/kube-prometheus-stack.
+# Install name is "monitoring" in namespace "monitoring".
+# WRITTEN BUT NOT YET TESTED. Written from memory of the chart, because the
+# chart docs could not be reached when this file was made.
+
+# Rules that need a control plane we cannot scrape on Docker Desktop.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# The default rule set is large. Our own rules are in monitoring/robot-shop-alerts.yaml.
+defaultRules:
+  create: false
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 192Mi
+  # Skips the certgen job and its extra image pull, which helps on slow internet.
+  admissionWebhooks:
+    enabled: false
+  tls:
+    enabled: false
+
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    retention: 6h
+    retentionSize: 1GB
+    # Pick up our PrometheusRule and any ServiceMonitor without extra labels.
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 400Mi
+      limits:
+        memory: 1Gi
+    # No storageSpec, so data lives in an emptyDir and is lost on restart.
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+    retention: 24h
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+
+grafana:
+  enabled: true
+  replicas: 1
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  # Loki is added as a data source from this file, so it is not set up by hand.
+  # The url matches the Loki release "loki" in the "monitoring" namespace.
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      isDefault: false
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      memory: 64Mi
