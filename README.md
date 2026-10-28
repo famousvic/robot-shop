@@ -68,7 +68,7 @@ Screenshots go in docs/screenshots.
 
 This section is the honest status. It is updated as work finishes.
 
-* Step 1, deploy Robot Shop: the Helm release is installed and the load generator file is ready. Some pods were stuck because the Docker Desktop cluster could not pull images (a registry mirror returned HTTP 500), and mysql kept being killed for memory even after the limit was raised. See NOTES.md for the latest state.
+* Step 1, deploy Robot Shop: NOT healthy yet. The Helm release is installed and the load generator is applied. cart, catalogue, mongodb, user and web are Running. mysql and rabbitmq are killed for running out of memory (the container limit is hit), and dispatch, payment, ratings, redis and shipping are still pulling images, which is very slow on this machine. So the shop does not work end to end. See NOTES.md for the evidence.
 * Step 2, metrics and dashboard: not finished yet. The alert rule and files are written but have not been applied.
 * Step 3, logs with Loki and Fluent Bit: not finished yet.
 * Step 4, tracing: not done.
