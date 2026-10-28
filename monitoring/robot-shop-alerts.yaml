@@ -1,0 +1,31 @@
+# Alert rules for the four focus services: web, catalogue, cart, payment.
+# Robot Shop does not expose request metrics to Prometheus, so these rules use
+# pod readiness and restarts from kube-state-metrics, which do exist.
+# The "release" label must match the kube-prometheus-stack release name (monitoring).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: robot-shop-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: robot-shop
+      rules:
+        - alert: RobotShopPodNotReady
+          expr: kube_pod_status_ready{namespace="robot-shop", condition="true", pod=~"(web|catalogue|cart|payment)-.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} has not been ready for 5 minutes"
+            runbook_url: https://github.com/famousvic/robot-shop/blob/master/docs/runbook.md
+        - alert: RobotShopPodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace="robot-shop", pod=~"(web|catalogue|cart|payment)-.*"}[15m]) > 3
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} restarted more than 3 times in 15 minutes"
+            runbook_url: https://github.com/famousvic/robot-shop/blob/master/docs/runbook.md

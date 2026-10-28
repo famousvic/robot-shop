@@ -1,128 +1,80 @@
-# Sample Microservice Application
+# Robot Shop on Kubernetes with monitoring and logging
 
-Stan's Robot Shop is a sample microservice application you can use as a sandbox to test and learn containerised application orchestration and monitoring techniques. It is not intended to be a comprehensive reference example of how to write a microservices application, although you will better understand some of those concepts by playing with Stan's Robot Shop. To be clear, the error handling is patchy and there is not any security built into the application.
+This is my fork of the Instana Robot Shop demo (https://github.com/instana/robot-shop). It is a small online shop made of many services. I run it on the Kubernetes that comes with Docker Desktop, and I add metrics, a dashboard, logs, an alert rule and some reliability documents around it.
 
-You can get more detailed information from my [blog post](https://www.instana.com/blog/stans-robot-shop-sample-microservice-application/) about this sample microservice application.
+## What is deployed
 
-This sample microservice application has been built using these technologies:
-- NodeJS ([Express](http://expressjs.com/))
-- Java ([Spring Boot](https://spring.io/))
-- Python ([Flask](http://flask.pocoo.org))
-- Golang
-- PHP (Apache)
-- MongoDB
-- Redis
-- MySQL ([Maxmind](http://www.maxmind.com) data)
-- RabbitMQ
-- Nginx
-- AngularJS (1.x)
+* Robot Shop, installed with Helm from K8s/helm into the namespace robot-shop.
+* A load generator (K8s/load-deployment.yaml) that sends fake traffic to the shop.
+* Prometheus, Alertmanager and Grafana (kube-prometheus-stack) in the namespace monitoring.
+* Loki and Fluent Bit for logs, also in monitoring.
 
-The various services in the sample application already include all required Instana components installed and configured. The Instana components provide automatic instrumentation for complete end to end [tracing](https://docs.instana.io/core_concepts/tracing/), as well as complete visibility into time series metrics for all the technologies.
+The Instana settings in the Helm values were emptied, because I do not use Instana here. The mysql memory limit was raised from 1024Mi to 2048Mi because mysql was killed for using too much memory while starting.
 
-To see the application performance results in the Instana dashboard, you will first need an Instana account. Don't worry a [trial account](https://instana.com/trial?utm_source=github&utm_medium=robot_shop) is free.
+## How to install
 
-## Build from Source
-To optionally build from source (you will need a newish version of Docker to do this) use Docker Compose. Optionally edit the `.env` file to specify an alternative image registry and version tag; see the official [documentation](https://docs.docker.com/compose/env-file/) for more information.
+You need Docker Desktop with Kubernetes on, plus kubectl and Helm.
 
-To download the tracing module for Nginx, it needs a valid Instana agent key. Set this in the environment before starting the build.
+Shop:
 
-```shell
-$ export INSTANA_AGENT_KEY="<your agent key>"
-```
+    helm install robot-shop ./K8s/helm -n robot-shop --create-namespace
+    kubectl apply -f K8s/load-deployment.yaml -n robot-shop
 
-Now build all the images.
+Monitoring (values are in monitoring/prometheus-values.yaml):
 
-```shell
-$ docker-compose build
-```
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm install monitoring prometheus-community/kube-prometheus-stack -n monitoring --create-namespace -f monitoring/prometheus-values.yaml
+    kubectl apply -f monitoring/robot-shop-alerts.yaml
 
-If you modified the `.env` file and changed the image registry, you need to push the images to that registry
+Logging (values are in logging/loki-values.yaml and logging/fluent-bit-values.yaml):
 
-```shell
-$ docker-compose push
-```
+    helm repo add grafana https://grafana.github.io/helm-charts
+    helm repo add fluent https://fluent.github.io/helm-charts
+    helm install loki grafana/loki -n monitoring -f logging/loki-values.yaml
+    helm install fluent-bit fluent/fluent-bit -n monitoring -f logging/fluent-bit-values.yaml
 
-## Run Locally
-You can run it locally for testing.
+## How to open things
 
-If you did not build from source, don't worry all the images are on Docker Hub. Just pull down those images first using:
+Shop:
 
-```shell
-$ docker-compose pull
-```
+    kubectl port-forward svc/web 8082:8080 -n robot-shop
 
-Fire up Stan's Robot Shop with:
+Then open http://localhost:8082.
 
-```shell
-$ docker-compose up
-```
+Grafana:
 
-If you want to fire up some load as well:
+    kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring
 
-```shell
-$ docker-compose -f docker-compose.yaml -f docker-compose-load.yaml up
-```
+Then open http://localhost:3000. The user is admin. To read the password, run this yourself in your own terminal:
 
-If you are running it locally on a Linux host you can also run the Instana [agent](https://docs.instana.io/quick_start/agent_setup/container/docker/) locally, unfortunately the agent is currently not supported on Mac.
+    kubectl get secret monitoring-grafana -n monitoring -o jsonpath="{.data.admin-password}" | base64 -d
 
-There is also only limited support on ARM architectures at the moment.
+## Where things are
 
-## Marathon / DCOS
+* K8s/helm: the Helm chart for Robot Shop.
+* monitoring/prometheus-values.yaml: small values for Prometheus and Grafana.
+* monitoring/robot-shop-dashboard.json: the Grafana dashboard saved as code.
+* monitoring/robot-shop-alerts.yaml: the alert rules.
+* logging/: values for Loki and Fluent Bit.
+* docs/slo.md: the SLI, SLO and error budget.
+* docs/runbook.md: what to do when the alert fires.
+* docs/postmortem-template.md: a blank blameless postmortem template.
+* docs/slack-alert-setup.md: steps to connect Slack (not done yet).
+* NOTES.md: a running list of what was done.
 
-The manifests for robotshop are in the *DCOS/* directory. These manifests were built using a fresh install of DCOS 1.11.0. They should work on a vanilla HA or single instance install.
+Screenshots go in docs/screenshots.
 
-You may install Instana via the DCOS package manager, instructions are here: https://github.com/dcos/examples/tree/master/instana-agent/1.9
+## What was and was not completed
 
-## Kubernetes
-You can run Kubernetes locally using [minikube](https://github.com/kubernetes/minikube) or on one of the many cloud providers.
+This section is the honest status. It is updated as work finishes.
 
-The Docker container images are all available on [Docker Hub](https://hub.docker.com/u/robotshop/).
+* Step 1, deploy Robot Shop: the Helm release is installed and the load generator file is ready. Some pods were stuck because the Docker Desktop cluster could not pull images (a registry mirror returned HTTP 500), and mysql kept being killed for memory even after the limit was raised. See NOTES.md for the latest state.
+* Step 2, metrics and dashboard: not finished yet. The alert rule and files are written but have not been applied.
+* Step 3, logs with Loki and Fluent Bit: not finished yet.
+* Step 4, tracing: not done.
+* Step 5, SLO document, alert rule and runbook: written. Slack delivery was not set up and not tested.
+* Step 6, incident drill: not done, because the instructor runs it.
 
-Install Stan's Robot Shop to your Kubernetes cluster using the [Helm](K8s/helm/README.md) chart.
+The instructor starter configs were not available to me, so I wrote my own minimal configs. They use single replicas, no persistence and short retention, because Docker Desktop has only about 7GB of memory.
 
-To deploy the Instana agent to Kubernetes, just use the [helm](https://github.com/instana/helm-charts) chart.
-
-## Accessing the Store
-If you are running the store locally via *docker-compose up* then, the store front is available on localhost port 8080 [http://localhost:8080](http://localhost:8080/)
-
-If you are running the store on Kubernetes via minikube then, find the IP address of Minikube and the Node Port of the web service.
-
-```shell
-$ minikube ip
-$ kubectl get svc web
-```
-
-If you are using a cloud Kubernetes / Openshift / Mesosphere then it will be available on the load balancer of that system.
-
-## Load Generation
-A separate load generation utility is provided in the `load-gen` directory. This is not automatically run when the application is started. The load generator is built with Python and [Locust](https://locust.io). The `build.sh` script builds the Docker image, optionally taking *push* as the first argument to also push the image to the registry. The registry and tag settings are loaded from the `.env` file in the parent directory. The script `load-gen.sh` runs the image, it takes a number of command line arguments. You could run the container inside an orchestration system (K8s) as well if you want to, an example descriptor is provided in K8s directory. For End-user Monitoring ,load is not automatically generated but by navigating through the Robotshop from the browser .For more details see the [README](load-gen/README.md) in the load-gen directory.  
-
-## Website Monitoring / End-User Monitoring
-
-### Docker Compose
-
-To enable Website Monioring / End-User Monitoring (EUM) see the official [documentation](https://docs.instana.io/website_monitoring/) for how to create a configuration. There is no need to inject the JavaScript fragment into the page, this will be handled automatically. Just make a note of the unique key and set the environment variable `INSTANA_EUM_KEY` and `INSTANA_EUM_REPORTING_URL` for the web image within `docker-compose.yaml`.
-
-### Kubernetes
-
-The Helm chart for installing Stan's Robot Shop supports setting the key and endpoint url required for website monitoring, see the [README](K8s/helm/README.md).
-
-## Prometheus
-
-The cart and payment services both have Prometheus metric endpoints. These are accessible on `/metrics`. The cart service provides:
-
-* Counter of the number of items added to the cart
-
-The payment services provides:
-
-* Counter of the number of items perchased
-* Histogram of the total number of items in each cart
-* Histogram of the total value of each cart
-
-To test the metrics use:
-
-```shell
-$ curl http://<host>:8080/api/cart/metrics
-$ curl http://<host>:8080/api/payment/metrics
-```
-
+Robot Shop services do not expose Prometheus request metrics. So the alert rules use pod readiness and restart counts, which are real data but only a substitute for request errors and latency.
