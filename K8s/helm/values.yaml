@@ -9,8 +9,7 @@ image:
 # Provide your key and set the endpoint
 eum:
   key: null
-  url: https://eum-eu-west-1.instana.io
-  #url: https://eum-us-west-2.instana.io
+  url: ""
 
 # Pod Security Policy
 psp:
@@ -41,7 +40,10 @@ dispatch: {}
 
 mongodb: {}
 
-mysql: {}
+mysql:
+  resources:
+    limits:
+      memory: 2048Mi
 
 payment:
   # Alternative payment gateway URL
